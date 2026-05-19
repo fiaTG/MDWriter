@@ -290,10 +290,10 @@ class XMdDocument(models.Model):
         """Gibt den MDWriter-Ordner in Documents zurück, legt ihn ggf. an."""
         try:
             Doc = self.env["documents.document"].sudo()
-            folder = Doc.search([("name", "=", "MDWriter Dokumentation"), ("type", "=", "folder")], limit=1)
-            return folder or Doc.create({"name": "MDWriter Dokumentation", "type": "folder"})
+            folder = Doc.search([("name", "=", "Markdown Dokumente"), ("type", "=", "folder")], limit=1)
+            return folder or Doc.create({"name": "Markdown Dokumente", "type": "folder"})
         except Exception as e:
-            _logger.warning("MDWriter: Ordner konnte nicht angelegt werden: %s", e)
+            _logger.warning("Markdown Dokumente: Ordner konnte nicht angelegt werden: %s", e)
             return None
 
     def _link_attachment_to_documents(self, attachment, datas):
