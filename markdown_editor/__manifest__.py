@@ -1,7 +1,7 @@
 {
     "name": "Markdown Editor",
     "summary": "Markdown‑basierter Editor mit Live‑Vorschau und Versionierung",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1",
     "author": "Timo",
     "maintainers": ["Timo"],
     "website": "https://github.com/fiaTG/MDWriter",
@@ -40,5 +40,5 @@
     ],
     "installable": True,
     "application": True,
-    "auto_install": False,
+    "auto_install": True,
 }
