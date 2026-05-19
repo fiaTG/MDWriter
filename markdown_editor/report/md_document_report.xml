@@ -1,33 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+==================================================================
+md_document_report.xml — PDF-Report mit QWeb
+==================================================================
+QWeb ist Odoos Template-Sprache für HTML/PDF-Ausgabe.
+Funktioniert ähnlich wie Jinja2 oder andere Template-Engines:
+Python-Ausdrücke werden in speziellen t-* Attributen geschrieben.
+
+Wie ein PDF entsteht:
+  1. Odoo rendert dieses Template mit echten Daten → HTML
+  2. wkhtmltopdf konvertiert das HTML → PDF
+  3. Der User erhält die fertige PDF-Datei zum Download
+
+QWeb-Direktiven (alle beginnen mit "t-"):
+  t-call="..."    → bindet ein anderes Template ein (wie ein Include/Layout)
+  t-foreach="..." → Schleife: für jeden Eintrag in der Liste
+  t-as="..."      → Name der Schleifenvariable
+  t-out="..."     → gibt einen Wert ALS SICHERES HTML aus (kein Escaping)
+  t-esc="..."     → gibt einen Wert als PLAIN TEXT aus (HTML wird escaped)
+  t-if/t-elif     → bedingte Ausgabe (wie if/elif in Python)
+
+Sicherheit: t-esc für normalen Text, t-out NUR wenn der Wert
+bereits sicheres HTML ist (z.B. content_html, das wir selbst
+mit Markup() oder mistune erzeugt haben).
+==================================================================
+-->
 <odoo>
     <!-- QWeb template for Markdown Document PDF -->
     <!-- Verwendet web.external_layout: Odoo-Standard-Header/Footer, zuverlässig mit wkhtmltopdf -->
     <template id="report_md_document">
+        <!--
+        t-call="web.html_container": bindet den Odoo-Standard-HTML-Wrapper ein.
+        Setzt DOCTYPE, <html>, <head> mit Odoo-CSS usw.
+        Das Bundle web.report_assets_common (aus __manifest__.py) liefert
+        dabei unsere md_document_report.scss für das PDF-Styling.
+        -->
         <t t-call="web.html_container">
+            <!--
+            t-foreach="docs" t-as="doc":
+              docs = alle Dokumente, die gedruckt werden sollen (Liste von Records).
+              doc  = das aktuelle Dokument in der Schleife.
+              Normalerweise wird nur 1 Dokument gedruckt (docs hat 1 Element).
+            -->
             <t t-foreach="docs" t-as="doc">
+                <!--
+                t-call="web.external_layout": fügt den Odoo-Standard-Header und
+                -Footer ein (Firmenname, Logo, Seitenzahl).
+                Der Inhalt des <div class="page"> ist der eigentliche Dokumentinhalt.
+                -->
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <!-- Styling: markdown_editor/static/src/scss/md_document_report.scss -->
-                        <!-- Bundle: web.report_assets_common -->
 
                         <!-- Dokumentkopf mit Metadaten -->
                         <div class="md-doc-header">
+                            <!--
+                            t-esc="doc.name": gibt den Dokumenttitel als Text aus.
+                            t-esc escaped HTML-Zeichen → sicher für beliebige Texte.
+                            -->
                             <h1><t t-esc="doc.name"/></h1>
                             <div class="md-doc-meta">
+                                <!-- or '': Fallback auf leeren String wenn owner_id leer ist -->
                                 <span><b>Autor: </b><t t-esc="doc.owner_id.name or ''"/></span>
                                 <span><b>Version: </b><t t-esc="doc.current_version"/></span>
                                 <span>
                                     <b>Status: </b>
+                                    <!-- t-if/t-elif: bedingte Ausgabe je nach Status-Wert -->
                                     <t t-if="doc.state == 'draft'">Entwurf</t>
                                     <t t-elif="doc.state == 'published'">Veröffentlicht</t>
                                     <t t-elif="doc.state == 'archived'">Archiviert</t>
                                 </span>
+                                <!-- strftime: Python-Methode zur Datumsformatierung -->
                                 <span><b>Datum: </b><t t-esc="doc.write_date.strftime('%d.%m.%Y') if doc.write_date else ''"/></span>
                             </div>
                         </div>
 
                         <!-- Dokumentinhalt -->
                         <div class="md-doc-content">
+                            <!--
+                            t-out="doc.content_html": gibt das HTML des Dokuments direkt aus.
+                            t-out (statt t-esc!) weil content_html bereits sicheres HTML ist:
+                            es wurde in _markdown_zu_html() mit Markup() gekennzeichnet.
+                            t-esc würde das HTML "kaputt escapen" (< → &lt; usw.)
+                            -->
                             <t t-out="doc.content_html"/>
                         </div>
                     </div>
@@ -36,13 +90,19 @@
         </t>
     </template>
 
-    <!-- Report action definition -->
+    <!--
+    Report action: verknüpft das Template mit dem Modell.
+    Odoo braucht diese Verknüpfung um:
+      - Den Aufruf per XML-ID zu ermöglichen (markdown_editor.md_document_pdf)
+      - Den Report in der Druckmenü-Liste anzuzeigen
+      - wkhtmltopdf anzuweisen welches Template zu verwenden ist
+    -->
     <record id="md_document_pdf" model="ir.actions.report">
         <field name="name">x.md.document.name</field>
         <field name="model">x.md.document</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">markdown_editor.report_md_document</field>
-        <field name="report_file">object.name</field>
-        <!-- binding_model_id entfernt: Export-Button ist im Form-Header -->
+        <field name="report_type">qweb-pdf</field>       <!-- "qweb-pdf" = via wkhtmltopdf rendern -->
+        <field name="report_name">markdown_editor.report_md_document</field>  <!-- Template-ID -->
+        <field name="report_file">object.name</field>    <!-- Dateiname für den Download -->
+        <!-- binding_model_id entfernt: Export-Button ist im Form-Header, nicht im Druckmenü -->
     </record>
 </odoo>

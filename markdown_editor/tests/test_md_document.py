@@ -1,12 +1,32 @@
+# ==================================================================
+# test_md_document.py — automatisierte Tests für das MDWriter-Modul
+# ==================================================================
+# Odoo-Tests verwenden "TransactionCase": jeder Test läuft in einer
+# Datenbank-Transaktion, die am Ende automatisch zurückgerollt wird.
+# Testdaten verschwinden damit nach jedem Test — saubere Isolation.
+#
+# Struktur eines Tests:
+#   setUp(): wird VOR jedem Testfall aufgerufen — Testdaten vorbereiten
+#   test_*(): jede Methode, die mit "test_" beginnt, wird als Test ausgeführt
+#
+# Assertions: prüfen, ob ein Ergebnis dem Erwarteten entspricht.
+#   assertEqual(a, b)   → Test besteht wenn a == b
+#   assertFalse(x)      → Test besteht wenn x falsy ist (0, False, leer)
+#   assertTrue(x)       → Test besteht wenn x truthy ist
+#   assertRaises(Exc)   → Test besteht wenn die angegebene Exception geworfen wird
+#   assertIn(a, b)      → Test besteht wenn a in b vorkommt (Teilstring oder Element)
+# ==================================================================
+
 import hashlib
 from odoo.tests.common import TransactionCase
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError  # Exception: Zugriff verweigert
 
 
 class TestMdDocumentVersioning(TransactionCase):
+    # Testet: Wird beim Anlegen und Bearbeiten korrekt versioniert?
 
     def setUp(self):
-        super().setUp()
+        super().setUp()  # Odoo-Basis-setUp aufrufen (Pflicht bei TransactionCase)
         self.doc = self.env["x.md.document"].create({
             "name": "Testdokument",
             "content_md": "# Hallo Welt",
@@ -25,17 +45,21 @@ class TestMdDocumentVersioning(TransactionCase):
     def test_restore_reverts_content(self):
         # Eine ältere Version muss wiederherstellbar sein (Restore-Funktion).
         self.doc.write({"content_md": "# Geändert"})
+        # filtered(): gibt nur die Versionen zurück, die die Bedingung erfüllen.
+        # lambda v: ... ist eine anonyme Funktion — kurz für "wenn v.version == 1"
         v1 = self.doc.version_ids.filtered(lambda v: v.version == 1)
         v1.aktion_wiederherstellen()
         self.assertEqual(self.doc.content_md, "# Hallo Welt")
 
 
 class TestMdDocumentACL(TransactionCase):
+    # Testet: Greifen die Zugriffsregeln (ACL + Record Rules) korrekt?
 
     def setUp(self):
         super().setUp()
         self.user_a = self._testnutzer_anlegen("User A", "user_a_test@example.com")
         self.user_b = self._testnutzer_anlegen("User B", "user_b_test@example.com")
+        # with_user(user): führt die Operation als dieser Benutzer aus (nicht als Admin)
         self.doc_a = self.env["x.md.document"].with_user(self.user_a).create({
             "name": "Dokument von A",
             "content_md": "Inhalt A",
@@ -44,6 +68,8 @@ class TestMdDocumentACL(TransactionCase):
     def _testnutzer_anlegen(self, name, login):
         # Odoo.sh: color_scheme in res_users_settings kann NOT NULL ohne DB-Default sein.
         # ALTER TABLE setzt den fehlenden Default, damit res.users.create() funktioniert.
+        # self.env.cr.execute(): führt direktes SQL aus — hier nötig, weil Odoo ORM
+        # kein ALTER TABLE unterstützt. Nur in Tests verwenden!
         self.env.cr.execute("""
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'res_users_settings'
@@ -63,10 +89,12 @@ class TestMdDocumentACL(TransactionCase):
     def test_owner_can_read_own_document(self):
         # Eigentümer muss sein eigenes Dokument lesen können.
         doc = self.env["x.md.document"].with_user(self.user_a).browse(self.doc_a.id)
+        # browse(id): lädt einen Datensatz direkt per ID (ohne search)
         self.assertEqual(doc.name, "Dokument von A")
 
     def test_other_user_cannot_read_document(self):
         # Record Rule: Fremder User darf das Dokument eines anderen nicht sehen.
+        # search() gibt leeres Recordset zurück wenn Record Rule greift → assertFalse
         result = self.env["x.md.document"].with_user(self.user_b).search(
             [("id", "=", self.doc_a.id)]
         )
@@ -74,6 +102,7 @@ class TestMdDocumentACL(TransactionCase):
 
     def test_version_is_readonly_for_user(self):
         # ACL: Normaler User darf keine Versionen manuell anlegen (append-only).
+        # assertRaises als Kontextmanager (with): prüft ob der Code-Block die Exception wirft.
         with self.assertRaises(AccessError):
             self.env["x.md.document.version"].with_user(self.user_a).create({
                 "document_id": self.doc_a.id,
@@ -83,6 +112,7 @@ class TestMdDocumentACL(TransactionCase):
 
 
 class TestMdDocumentDiff(TransactionCase):
+    # Testet: Erzeugt der Diff-Wizard die richtigen HTML-Markierungen?
 
     def setUp(self):
         super().setUp()
@@ -91,6 +121,7 @@ class TestMdDocumentDiff(TransactionCase):
             "content_md": "Zeile 1\nZeile 2\n",
         })
         doc.write({"content_md": "Zeile 1\nZeile 2 geändert\nZeile 3\n"})
+        # sorted(..., key=...): sortiert nach version-Feld aufsteigend
         v1, v2 = sorted(doc.version_ids, key=lambda v: v.version)[:2]
         self.wizard = self.env["x.md.document.diff.wizard"].create({
             "document_id": doc.id,
@@ -100,5 +131,6 @@ class TestMdDocumentDiff(TransactionCase):
 
     def test_diff_shows_changes(self):
         # Diff-Wizard muss Hinzufügungen und Löschungen sichtbar machen.
+        # assertIn("o_md_diff_add", ...): prüft ob diese CSS-Klasse im HTML vorkommt
         self.assertIn("o_md_diff_add", self.wizard.diff_html)
         self.assertIn("o_md_diff_del", self.wizard.diff_html)

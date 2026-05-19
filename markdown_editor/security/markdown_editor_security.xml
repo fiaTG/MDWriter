@@ -1,25 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+==================================================================
+markdown_editor_security.xml — Zeilen-Zugriffsregeln (Record Rules)
+==================================================================
+WICHTIG: Lies zuerst ir.model.access.csv (ACL), DANN diese Datei.
+
+Unterschied ACL vs. Record Rules:
+  ACL (ir.model.access.csv):
+    → "Darf User X das Modell Y überhaupt anfassen?"
+    → Gilt für alle Datensätze des Modells gleichermaßen
+
+  Record Rules (diese Datei):
+    → "Welche konkreten Zeilen darf User X in Modell Y sehen/ändern?"
+    → Wird als WHERE-Klausel in SQL-Abfragen eingebaut
+    → "SELECT * FROM x_md_document WHERE owner_id = aktuellerUser"
+
+Nur wenn BEIDE grünes Licht geben, hat ein User Zugriff.
+
+Für x.md.document gibt es zwei Regeln:
+  1. Besitzer-Regel  → User sieht nur eigene Dokumente
+  2. Admin-Regel     → Admin sieht alle Dokumente
+
+Odoo wendet Regeln eines Modells mit ODER verknüpft an.
+Da Admin-Gruppe kein Mitglied der group_user ist: keine Überschneidung.
+==================================================================
+-->
 <odoo>
-    <!-- Record rule: Nur Eigentümer dürfen ihre Dokumente bearbeiten -->
+    <!--
+    record id="..."  → eindeutige XML-ID für diesen Datensatz
+    model="ir.rule" → "ich lege einen Record Rule-Datensatz an"
+
+    Die <field>-Tags setzen die Spalten des ir.rule-Datensatzes.
+    -->
+
+    <!-- Regel 1: Nur Eigentümer dürfen ihre eigenen Dokumente sehen/bearbeiten -->
     <record id="markdown_document_rule_owner_write" model="ir.rule">
         <field name="name">Markdown Dokument: Besitzer darf bearbeiten</field>
+
+        <!-- model_id: für welches Modell gilt diese Regel? -->
         <field name="model_id" ref="model_x_md_document"/>
+
+        <!--
+        domain_force: Python-Domain — wird als WHERE-Klausel ausgewertet.
+        [("owner_id", "=", user.id)] bedeutet:
+          "Zeige nur Datensätze, deren owner_id der aktuell eingeloggte User ist."
+        user.id ist eine Odoo-Sondervariable: die ID des angemeldeten Nutzers.
+        -->
         <field name="domain_force">[("owner_id", "=", user.id)]</field>
+
+        <!--
+        groups: Für welche Gruppe gilt diese Regel?
+        eval="[(4, ref('base.group_user'))]": Odoo Many2many-Syntax.
+          4 = "füge diesen Datensatz zur Relation hinzu" (Many2many-Operation)
+          ref('base.group_user') = alle normalen Nutzer
+        -->
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
-        <field name="perm_read" eval="1"/>
-        <field name="perm_write" eval="1"/>
-        <field name="perm_create" eval="1"/>
-        <field name="perm_unlink" eval="0"/>
+
+        <!-- Welche Aktionen werden durch diese Regel eingeschränkt? -->
+        <field name="perm_read"   eval="1"/>  <!-- Lesen:   nur eigene Dokumente -->
+        <field name="perm_write"  eval="1"/>  <!-- Ändern:  nur eigene Dokumente -->
+        <field name="perm_create" eval="1"/>  <!-- Anlegen: nur für sich selbst   -->
+        <field name="perm_unlink" eval="0"/>  <!-- Löschen: durch ACL schon verboten -->
     </record>
 
-    <!-- Record rule: Administratoren haben volle Rechte -->
+    <!-- Regel 2: Administratoren haben vollen Zugriff auf alle Dokumente -->
     <record id="markdown_document_rule_admin" model="ir.rule">
         <field name="name">Markdown Dokument: Admin Zugriff</field>
         <field name="model_id" ref="model_x_md_document"/>
+
+        <!--
+        domain_force [(1, '=', 1)] = "immer wahr" — kein Filter.
+        Admins sehen alle Datensätze ohne Einschränkung.
+        -->
         <field name="domain_force">[(1, '=', 1)]</field>
+
         <field name="groups" eval="[(4, ref('base.group_system'))]"/>
-        <field name="perm_read" eval="1"/>
-        <field name="perm_write" eval="1"/>
+        <field name="perm_read"   eval="1"/>
+        <field name="perm_write"  eval="1"/>
         <field name="perm_create" eval="1"/>
         <field name="perm_unlink" eval="1"/>
     </record>

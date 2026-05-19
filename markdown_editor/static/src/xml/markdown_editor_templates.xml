@@ -1,8 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+==================================================================
+markdown_editor_templates.xml — OWL-Template für den Editor
+==================================================================
+OWL-Templates beschreiben die HTML-Struktur einer Komponente.
+Sie werden in JavaScript über MarkdownField.template = "..." referenziert.
+
+Wichtige OWL-Template-Direktiven:
+  t-name="..."        → Name des Templates (wie eine Funktion benennen)
+  t-ref="..."         → gibt dem Element einen Namen, den JS per useRef() finden kann
+  t-on-<event>="..."  → bindet einen JavaScript-Eventhandler (wie onclick)
+  t-out="..."         → rendert HTML-Inhalt direkt ins DOM (kein Escaping!)
+                        Nur für sicheres HTML verwenden! (state.html kommt von markup())
+
+Layout dieser Komponente:
+  .o_markdown_editor          → äußerer Container (display: flex, Seite an Seite)
+    .o_md_editor_pane         → linke Hälfte: der Editor-Bereich
+      <textarea t-ref="editor"> → wird von CodeMirror übernommen
+    .o_markdown_preview       → rechte Hälfte: die Live-Vorschau
+==================================================================
+-->
 <templates xml:space="preserve">
+    <!--
+    t-name: eindeutiger Name des Templates.
+    Konvention: "modulname.KomponentenName"
+    Wird in markdown_editor.js über MarkdownField.template referenziert.
+    -->
     <t t-name="markdown_editor.MarkdownField">
         <div class="o_markdown_editor">
+
+            <!-- Linke Hälfte: Editor-Bereich -->
             <div class="o_md_editor_pane">
+                <!--
+                <textarea>: das HTML-Eingabefeld.
+                CodeMirror (in onMounted) verwandelt es in einen vollwertigen Editor.
+                Nach der Initialisierung ist das <textarea> versteckt — CodeMirror
+                baut seinen eigenen Editor-Bereich an derselben Stelle auf.
+
+                t-ref="editor": macht dieses Element per useRef("editor") in JS auffindbar.
+                t-on-input="_onInput": ruft _onInput() auf wenn der User tippt.
+                  Wird nur benutzt wenn CodeMirror NICHT geladen wurde (Fallback).
+                -->
                 <textarea
                     t-ref="editor"
                     class="o_input"
@@ -10,7 +48,15 @@
                     placeholder="Geben Sie hier Ihren Markdown‑Text ein..."
                 />
             </div>
+
+            <!-- Rechte Hälfte: Live-Vorschau -->
             <div class="o_markdown_preview">
+                <!--
+                t-out="state.html": gibt state.html direkt als HTML ins DOM aus.
+                state.html ist ein markup()-Objekt aus JavaScript (sicher für t-out).
+                Durch useState in setup() wird dieser Wert bei jeder Textänderung
+                automatisch aktualisiert → die Vorschau refresht in Echtzeit.
+                -->
                 <t t-out="state.html"/>
             </div>
         </div>

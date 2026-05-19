@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+==================================================================
+md_document_diff_views.xml — View für den Diff-Wizard
+==================================================================
+Der Diff-Wizard ist ein TransientModel (kurzlebig, Popup-Formular).
+Er hat keine Listen-View — der User sieht ihn nur als Popup-Dialog.
+
+Besonderheiten dieser View:
+  - <footer> mit "Schließen"-Button: zeigt einen Fußzeilenbereich
+    mit Aktions-Buttons am unteren Rand des Popups
+  - special="cancel": schließt das Popup ohne Speichern
+  - widget="html": rendert diff_html als echtes HTML (mit <span>-Farben)
+==================================================================
+-->
 <odoo>
     <!-- Wizard Form View: Versionsdiff -->
     <record id="view_md_document_diff_wizard_form" model="ir.ui.view">
@@ -8,16 +22,35 @@
             <form string="Versionen vergleichen">
                 <group>
                     <group>
+                        <!-- readonly="1": Das Dokument ist vorbelegt und kann nicht geändert werden -->
                         <field name="document_id" readonly="1"/>
+                        <!--
+                        options="{'no_create': True}": verhindert, dass der User
+                        direkt im Dropdown eine neue Version anlegen kann.
+                        Versionen sind append-only — nur der Code darf sie anlegen.
+                        -->
                         <field name="version_from_id" options="{'no_create': True}"/>
                     </group>
                     <group>
                         <field name="version_to_id" options="{'no_create': True}"/>
                     </group>
                 </group>
+
+                <!-- <separator>: visuelle Trennlinie mit Beschriftung -->
                 <separator string="Diff"/>
+
+                <!--
+                widget="html": zeigt den Inhalt als gerendertes HTML an.
+                Das <pre>-Block mit <span>-Tags aus md_document_diff.py
+                wird dadurch farbig dargestellt.
+                readonly="1": User kann den Diff nicht bearbeiten.
+                nolabel="1": kein Label vor dem Feld.
+                -->
                 <field name="diff_html" widget="html" nolabel="1" readonly="1"/>
+
+                <!-- <footer>: Schaltflächen am unteren Rand des Popups -->
                 <footer>
+                    <!-- special="cancel": schließt das Popup ohne Speichern -->
                     <button string="Schließen" special="cancel"/>
                 </footer>
             </form>
