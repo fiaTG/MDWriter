@@ -480,49 +480,42 @@ Für die automatisierten Tests wird die Klasse `TransactionCase` des Odoo-Testfr
 Die Testdatei liegt unter `tests/test_md_document.py` und wird mit folgendem Befehl ausgeführt:
 
 ```bash
-./odoo-bin test -m markdown_editor -d <datenbankname>
+odoo-bin -d <datenbankname> --test-enable -u markdown_editor --stop-after-init
 ```
 
 ### 6.2 Testfälle
+
+Die Testsuite umfasst 7 automatisierte Testfälle in drei Testklassen, die direkt den Pflichtanforderungen aus dem Projektantrag entsprechen.
 
 **Testgruppe 1: Versionierung (TestMdDocumentVersioning)**
 
 | Nr. | Beschreibung | Erwartetes Ergebnis |
 |---|---|---|
 | T1.1 | Neues Dokument anlegen | Version 1 wird automatisch erstellt |
-| T1.2 | Inhalt schreiben | Neue Version wird angelegt |
-| T1.3 | MD5-Prüfsumme | Stimmt mit `hashlib.md5(content.encode()).hexdigest()` überein |
-| T1.4 | `changed_by`-Feld | Enthält den aktuell eingeloggten Benutzer |
-| T1.5 | Restore-Funktion | Stellt älteren Inhalt wieder her und erzeugt neue Version |
-| T1.6 | Mehrfaches Schreiben | Versionsnummern steigen monoton an (1, 2, 3 …) |
+| T1.2 | Inhalt ändern | Neue Version wird angelegt, `current_version` steigt auf 2 |
+| T1.3 | Restore-Funktion | Älterer Inhalt wird wiederhergestellt |
 
 **Testgruppe 2: Zugriffskontrolle (TestMdDocumentACL)**
 
 | Nr. | Beschreibung | Erwartetes Ergebnis |
 |---|---|---|
-| T2.1 | Eigentümer liest eigenes Dokument | Zugriff erlaubt |
-| T2.2 | Fremder Benutzer liest Dokument eines anderen | Zugriff verweigert (kein Ergebnis) |
-| T2.3 | Normaler Benutzer erstellt Version | Zugriff verweigert (AccessError) |
+| T2.1 | Eigentümer liest eigenes Dokument | Zugriff erlaubt, Name korrekt |
+| T2.2 | Fremder Benutzer sucht Dokument eines anderen | Leeres Ergebnis (Record Rule greift) |
+| T2.3 | Normaler Benutzer legt Version manuell an | `AccessError` (ACL verweigert create auf Versionsmodell) |
 
 **Testgruppe 3: Versionsvergleich (TestMdDocumentDiff)**
 
 | Nr. | Beschreibung | Erwartetes Ergebnis |
 |---|---|---|
-| T3.1 | Hinzugefügte Zeilen | `+`-markierte Zeilen im Diff |
-| T3.2 | Gelöschte Zeilen | `-`-markierte Zeilen im Diff |
-| T3.3 | Keine Änderungen | Meldung „Keine Unterschiede" |
-| T3.4 | Dokument ohne Versionen | Leeres Ergebnis, kein Absturz |
-
-**Testgruppe 4: Fehler-Fallbacks (TestMdDocumentFallback)**
-
-| Nr. | Beschreibung | Erwartetes Ergebnis |
-|---|---|---|
-| T4.1 | PDF-Rendering schlägt fehl | Versionierung wird trotzdem abgeschlossen |
-| T4.2 | Leerer Inhalt | `content_html` enthält leeres `<pre>`-Element |
+| T3.1 | Diff zweier Versionen | HTML enthält CSS-Klassen für Hinzufügungen und Löschungen |
 
 ### 6.3 Testergebnisse
 
-Alle 17 automatisierten Testfälle wurden erfolgreich abgeschlossen. Kein Test schlägt fehl. Die Testergebnisse wurden auf der Odoo.sh-Instanz verifiziert.
+Alle 7 automatisierten Testfälle wurden auf der Odoo.sh-Instanz erfolgreich ausgeführt:
+
+```
+0 failed, 0 error(s) of 7 tests
+```
 
 Im Rahmen der manuellen Integrationstests wurden folgende Szenarien geprüft:
 
