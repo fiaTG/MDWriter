@@ -7,7 +7,7 @@
     "website": "https://github.com/fiaTG/MDWriter_mvp",
     "license": "LGPL-3",
     "category": "Productivity",
-    "images": ["static/description/icon.png"],
+    "images": ["static/description/IconVersuch.png"],
     "depends": [
         "base",
         "web",
