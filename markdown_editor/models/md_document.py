@@ -266,6 +266,8 @@ class XMdDocument(models.Model):
 
     def _create_pdf_attachment(self, record, version_num):
         """Rendert und speichert PDF-Report als Anhang. Gibt False zurück bei Fehler."""
+        if self.env.context.get("skip_pdf_attachment"):
+            return False
         try:
             report = self.env.ref("markdown_editor.md_document_pdf", raise_if_not_found=False)
             if not report:
@@ -403,6 +405,7 @@ class XMdDocument(models.Model):
     def _create_demo_data(self):
         """Legt Beispieldokumente für Demo-Instanzen an. Wird nur aus demo/demo_documents.xml aufgerufen."""
         try:
+            self = self.with_context(skip_pdf_attachment=True)
             self.create({"name": "MDWriter — Markdown-Referenz", "content_md": _DEMO_SHOWCASE, "state": "published"})
 
             doc_install = self.create({"name": "Installationsanleitung: MDWriter", "content_md": _DEMO_INSTALL_V1})
