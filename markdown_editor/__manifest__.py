@@ -11,7 +11,6 @@
     "depends": [
         "base",
         "web",
-        "documents",
     ],
     "data": [
         "security/ir.model.access.csv",
@@ -35,6 +34,9 @@
             "markdown_editor/static/src/scss/md_document_report.scss",
         ],
     },
+    "demo": [
+        "demo/demo_documents.xml",
+    ],
     "installable": True,
     "application": True,
     "auto_install": False,

@@ -8,6 +8,193 @@ try:
 except ImportError:
     _mistune_available = False
 
+_DEMO_SHOWCASE = """\
+# MDWriter — Markdown-Referenz
+
+Diese Datei demonstriert alle unterstützten Markdown-Elemente in der Live-Vorschau.
+
+---
+
+## Textformatierung
+
+Normaler Fließtext mit **fettem Text**, *kursivem Text* und ~~durchgestrichenem Text~~.
+
+Inline-Code: `const result = compute(42);`
+
+Ein [Link zur Projektseite](https://github.com/fiaTG/MDWriter_mvp) erscheint dunkelgrün.
+
+---
+
+## Code-Block
+
+```python
+def berechne_checksumme(inhalt: str) -> str:
+    import hashlib
+    return hashlib.md5(inhalt.encode()).hexdigest()
+```
+
+```javascript
+// OWL-Komponente — Live-Vorschau initialisieren
+onMounted(() => {
+    this.editor = CodeMirror.fromTextArea(this.textareaRef.el, {
+        mode: "markdown",
+        lineWrapping: true,
+    });
+});
+```
+
+---
+
+## Tabelle
+
+| Feature           | Technologie      | Status        |
+|-------------------|------------------|---------------|
+| Editor Split-View | CodeMirror + OWL | Implementiert |
+| Live-Vorschau     | markdown-it      | Implementiert |
+| Versionierung     | Odoo ORM         | Implementiert |
+| PDF-Export        | QWeb + mistune   | Implementiert |
+| Diff-Ansicht      | unified_diff     | Implementiert |
+| ACL & Record Rules| Odoo Security    | Implementiert |
+
+---
+
+## Listen
+
+**Implementierte Features:**
+- Markdown-Editor mit Syntax-Highlighting
+- Echtzeit-Vorschau (Split-View)
+- Automatische Versionierung bei jeder Speicherung
+- Diff-Vergleich zwischen beliebigen Versionen
+- Restore-Funktion für ältere Versionen
+- PDF-Export per Knopfdruck
+
+**Entwicklungsreihenfolge:**
+1. Datenmodell und ORM definieren
+2. Security (ACL + Record Rules) konfigurieren
+3. OWL-Komponente entwickeln
+4. Versionierung implementieren
+5. PDF-Report mit QWeb erstellen
+6. Tests schreiben und auf Odoo.sh validieren
+
+---
+
+## Blockquote
+
+> „MDWriter ersetzt externe Dokumentationstools durch eine native Odoo-Integration —
+> technische Dokumentation bleibt im selben System wie die Geschäftsdaten."
+
+---
+
+## Horizontale Linie
+
+Oberhalb der Linie.
+
+---
+
+Unterhalb der Linie.
+"""
+
+_DEMO_INSTALL_V1 = """\
+# Installationsanleitung: MDWriter
+
+## Voraussetzungen
+
+- Odoo 19 Community oder Enterprise
+- Python 3.11+
+"""
+
+_DEMO_INSTALL_V2 = """\
+# Installationsanleitung: MDWriter
+
+## Voraussetzungen
+
+- Odoo 19 Community oder Enterprise
+- Python 3.11+
+- wkhtmltopdf (für PDF-Export)
+- mistune (Python-Paket: `pip install mistune`)
+
+## Installation
+
+1. Repository klonen:
+   `git clone https://github.com/fiaTG/MDWriter_mvp.git`
+2. Verzeichnis `markdown_editor` in den Odoo-Addons-Pfad legen.
+3. Modul in Odoo unter *Einstellungen → Module* aktivieren.
+"""
+
+_DEMO_INSTALL_V3 = """\
+# Installationsanleitung: MDWriter
+
+## Voraussetzungen
+
+- Odoo 19 Community oder Enterprise
+- Python 3.11+
+- wkhtmltopdf (für PDF-Export)
+- mistune (Python-Paket: `pip install mistune`)
+
+## Installation
+
+1. Repository klonen:
+   `git clone https://github.com/fiaTG/MDWriter_mvp.git`
+2. Verzeichnis `markdown_editor` in den Odoo-Addons-Pfad legen.
+3. Modul in Odoo unter *Einstellungen → Module* aktivieren.
+
+## Deployment auf Odoo.sh
+
+Das Modul wird automatisch erkannt und installiert, wenn es im
+GitHub-Repository liegt und die Branch mit dem Odoo.sh-Projekt verknüpft ist.
+
+```
+git push mvp main
+```
+
+## Fehlerbehebung
+
+| Problem               | Lösung                                       |
+|-----------------------|----------------------------------------------|
+| PDF-Export fehlt      | `wkhtmltopdf` installieren, Dienst neu starten |
+| Vorschau leer         | `mistune` via pip nachinstallieren           |
+| Modul nicht sichtbar  | Addons-Pfad in `odoo.conf` prüfen           |
+"""
+
+_DEMO_RELEASE_NOTES = """\
+# Release Notes: MDWriter v1.0
+
+**Datum:** Mai 2026
+**Autor:** Timo Giese, TrendTec UG
+
+---
+
+## Neue Features
+
+- **Markdown-Editor** mit Split-View (Editor links, Vorschau rechts)
+- **Live-Vorschau** auf Basis von markdown-it
+- **Automatische Versionierung** bei jeder Inhaltsänderung
+- **Diff-Ansicht** — farbiger Vergleich beliebiger Versionen
+- **Restore-Funktion** — Ältere Version wiederherstellen
+- **PDF-Export** — Dokument als PDF herunterladen
+- **ACL & Record Rules** — Nutzer sehen ausschließlich eigene Dokumente
+- **Statusübergänge** — Entwurf → Veröffentlicht → Archiviert
+
+---
+
+## Technischer Stack
+
+| Komponente    | Technologie           |
+|---------------|-----------------------|
+| Backend       | Odoo 19, Python 3.11  |
+| Frontend      | OWL, CodeMirror       |
+| Markdown      | markdown-it           |
+| PDF-Rendering | mistune + QWeb        |
+| Datenbank     | PostgreSQL (Odoo ORM) |
+
+---
+
+## Bekannte Einschränkungen
+
+- Performance bei Dokumenten > 10.000 Zeilen nicht optimiert.
+- Keine kollaborative Echtzeit-Bearbeitung.
+"""
+
 from markupsafe import Markup
 from odoo import api, fields, models
 
@@ -211,6 +398,21 @@ class XMdDocument(models.Model):
         if "content_md" in vals:
             self._create_version()
         return res
+
+    @api.model
+    def _create_demo_data(self):
+        """Legt Beispieldokumente für Demo-Instanzen an. Wird nur aus demo/demo_documents.xml aufgerufen."""
+        try:
+            self.create({"name": "MDWriter — Markdown-Referenz", "content_md": _DEMO_SHOWCASE, "state": "published"})
+
+            doc_install = self.create({"name": "Installationsanleitung: MDWriter", "content_md": _DEMO_INSTALL_V1})
+            doc_install.write({"content_md": _DEMO_INSTALL_V2})
+            doc_install.write({"content_md": _DEMO_INSTALL_V3})
+            doc_install.write({"state": "published"})
+
+            self.create({"name": "Release Notes: MDWriter v1.0", "content_md": _DEMO_RELEASE_NOTES})
+        except Exception:
+            _logger.exception("MDWriter: Demo-Daten konnten nicht angelegt werden.")
 
 
 class XMdDocumentVersion(models.Model):
