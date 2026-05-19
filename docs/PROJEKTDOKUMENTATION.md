@@ -336,7 +336,7 @@ markdown_editor/
     └── test_md_document.py
 ```
 
-Die Abhängigkeiten des Moduls beschränken sich auf `base` und `web`, die in jeder Odoo-Installation vorhanden sind. Bewusst wurde auf eine Abhängigkeit von `documents` (Odoo-Documents-App) verzichtet, um das Modul auch in Community-Installationen ohne Enterprise-Module nutzen zu können.
+Das Modul hängt von drei Odoo-Modulen ab: `base` und `web`, die in jeder Odoo-Installation vorhanden sind, sowie `documents` (Odoo-Documents-App) für die automatische Ablage jeder Markdown-Version im Dokumentenordner „Markdown Dokumente". Die Documents-Integration ist defensiv implementiert: Fehlt das Modul oder schlägt die Ordneranlage fehl, wird der Fehler protokolliert und die Versionierung läuft ohne Unterbrechung weiter.
 
 ### 5.2 Backend-Implementierung
 
@@ -356,11 +356,9 @@ Das berechnete Feld `current_version` aggregiert die höchste Versionsnummer aus
 
 ```python
 @api.depends("version_ids.version")
-def _compute_current_version(self):
+def _aktuelle_version_berechnen(self):
     for doc in self:
-        doc.current_version = max(
-            (v.version for v in doc.version_ids), default=0
-        )
+        doc.current_version = max(doc.version_ids.mapped("version"), default=0)
 ```
 
 #### 5.2.2 Versionierungslogik
@@ -371,11 +369,11 @@ Die Versionierung wird automatisch bei zwei Ereignissen ausgelöst: beim Erstell
 def write(self, vals):
     res = super().write(vals)
     if "content_md" in vals:
-        self._create_version()
+        self._version_anlegen()
     return res
 ```
 
-Die Methode `_create_version()` koordiniert drei Teilaufgaben in getrennten Hilfsmethoden: das Anlegen der `.md`-Datei als Odoo-Attachment, das Rendern und Speichern der `.pdf`-Datei sowie das Anlegen des Versionsrecords. Fehler beim PDF-Rendering werden abgefangen und protokolliert, ohne die Versionierung zu unterbrechen – die Versionierung ist damit robust gegenüber Ausfällen des PDF-Dienstes.
+Die Methode `_version_anlegen()` koordiniert drei Teilaufgaben in getrennten Hilfsmethoden: das Anlegen der `.md`-Datei als Odoo-Attachment, das Rendern und Speichern der `.pdf`-Datei sowie das Anlegen des Versionsrecords. Fehler beim PDF-Rendering werden abgefangen und protokolliert, ohne die Versionierung zu unterbrechen – die Versionierung ist damit robust gegenüber Ausfällen des PDF-Dienstes.
 
 Die MD5-Prüfsumme wird aus dem UTF-8-kodierten Markdown-Inhalt berechnet und dient der Integritätsprüfung:
 
@@ -390,10 +388,10 @@ Das PDF-Rendering erfolgt über zwei Wege: Primär wird das beim Anlegen einer V
 Die serverseitige Markdown-zu-HTML-Konvertierung erfolgt über die Python-Bibliothek `mistune`. Das Ergebnis wird mit `Markup()` aus der `markupsafe`-Bibliothek als vertrauenswürdig markiert, damit das QWeb-Template den HTML-Code unescaped darstellt:
 
 ```python
-def _markdown_to_html(self, text):
+def _markdown_zu_html(self, text):
     if _mistune_available:
-        return Markup(mistune.html(text or ""))
-    return Markup("<pre>%s</pre>") % (text or "")
+        return Markup(mistune.html(text))
+    return Markup("<pre>%s</pre>") % text
 ```
 
 ### 5.3 Frontend-Implementierung
@@ -455,10 +453,10 @@ Bemerkenswert ist, dass normale Benutzer auf dem Versionsmodell ausschließlich 
 Die Datensatzregeln sind in `security/markdown_editor_security.xml` als XML definiert. Die Eigentümer-Regel gilt für alle Operationen (Lesen, Schreiben, Erstellen, Löschen) und ist der Gruppe `base.group_user` zugeordnet:
 
 ```xml
-<record id="rule_md_document_owner" model="ir.rule">
-    <field name="name">MD Document: Eigentümer-Zugriff</field>
+<record id="markdown_document_rule_owner_write" model="ir.rule">
+    <field name="name">Markdown Dokument: Besitzer darf bearbeiten</field>
     <field name="model_id" ref="model_x_md_document"/>
-    <field name="domain_force">[('owner_id', '=', user.id)]</field>
+    <field name="domain_force">[("owner_id", "=", user.id)]</field>
     <field name="groups" eval="[(4, ref('base.group_user'))]"/>
 </record>
 ```
