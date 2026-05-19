@@ -11,6 +11,7 @@
     "depends": [
         "base",
         "web",
+        "documents",
     ],
     "data": [
         "security/ir.model.access.csv",
