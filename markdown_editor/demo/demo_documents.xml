@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <function model="x.md.document" name="_create_demo_data"/>
+        <function model="x.md.document" name="_demo_dokumente_anlegen"/>
     </data>
 </odoo>

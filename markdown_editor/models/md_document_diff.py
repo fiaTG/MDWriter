@@ -20,10 +20,10 @@ class XMdDocumentDiffWizard(models.TransientModel):
         domain="[('document_id', '=', document_id)]",
     )
     # sanitize=False: HTML wird mit html.escape() selbst gebaut — Odoo darf es nicht nochmal sanitizen
-    diff_html = fields.Html(string="Diff", compute="_compute_diff_html", sanitize=False)
+    diff_html = fields.Html(string="Diff", compute="_diff_html_berechnen", sanitize=False)
 
     @api.depends("version_from_id", "version_to_id")
-    def _compute_diff_html(self):
+    def _diff_html_berechnen(self):
         for rec in self:
             if not (rec.version_from_id and rec.version_to_id):
                 rec.diff_html = ""

@@ -26,7 +26,7 @@ class TestMdDocumentVersioning(TransactionCase):
         # Eine ältere Version muss wiederherstellbar sein (Restore-Funktion).
         self.doc.write({"content_md": "# Geändert"})
         v1 = self.doc.version_ids.filtered(lambda v: v.version == 1)
-        v1.action_restore()
+        v1.aktion_wiederherstellen()
         self.assertEqual(self.doc.content_md, "# Hallo Welt")
 
 
@@ -34,14 +34,14 @@ class TestMdDocumentACL(TransactionCase):
 
     def setUp(self):
         super().setUp()
-        self.user_a = self._make_test_user("User A", "user_a_test@example.com")
-        self.user_b = self._make_test_user("User B", "user_b_test@example.com")
+        self.user_a = self._testnutzer_anlegen("User A", "user_a_test@example.com")
+        self.user_b = self._testnutzer_anlegen("User B", "user_b_test@example.com")
         self.doc_a = self.env["x.md.document"].with_user(self.user_a).create({
             "name": "Dokument von A",
             "content_md": "Inhalt A",
         })
 
-    def _make_test_user(self, name, login):
+    def _testnutzer_anlegen(self, name, login):
         # Odoo.sh: color_scheme in res_users_settings kann NOT NULL ohne DB-Default sein.
         # ALTER TABLE setzt den fehlenden Default, damit res.users.create() funktioniert.
         self.env.cr.execute("""

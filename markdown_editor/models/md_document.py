@@ -224,35 +224,32 @@ class XMdDocument(models.Model):
     )
     current_version = fields.Integer(
         string="Aktuelle Version",
-        compute="_compute_current_version",
+        compute="_aktuelle_version_berechnen",
         store=True,
     )
     content_html = fields.Html(
         string="HTML-Vorschau",
-        compute="_compute_content_html",
-        sanitize=False,  # sanitize=True würde html_sanitize() auslösen → Markup()-Kennzeichnung
-                         # geht verloren → t-out escaped statt rendert → <h1> wird &lt;h1&gt;
+        compute="_html_vorschau_berechnen",
+        sanitize=False,  # Markup()-Kennzeichnung würde durch sanitize=True verloren gehen
     )
 
     @api.depends("version_ids.version")
-    def _compute_current_version(self):
+    def _aktuelle_version_berechnen(self):
         for doc in self:
             doc.current_version = max(doc.version_ids.mapped("version"), default=0)
 
-    def _markdown_to_html(self, text):
-        """Konvertiert Markdown-Text zu sicherem HTML-Markup."""
+    def _markdown_zu_html(self, text):
         if _mistune_available:
             return Markup(mistune.html(text))
         _logger.warning("mistune nicht installiert — Fallback auf Plaintext-Darstellung")
         return Markup("<pre>%s</pre>") % text
 
     @api.depends("content_md")
-    def _compute_content_html(self):
+    def _html_vorschau_berechnen(self):
         for doc in self:
-            doc.content_html = self._markdown_to_html(doc.content_md) if doc.content_md else ""
+            doc.content_html = self._markdown_zu_html(doc.content_md) if doc.content_md else ""
 
-    def _create_md_attachment(self, record, content, version_num):
-        """Speichert Markdown-Text als .md-Datei (ir.attachment)."""
+    def _md_datei_speichern(self, record, content, version_num):
         encoded = base64.b64encode(content.encode("utf-8"))
         attachment = self.env["ir.attachment"].sudo().create({
             "name": f"{record.name}_v{version_num}.md",
@@ -261,11 +258,10 @@ class XMdDocument(models.Model):
             "res_model": record._name,
             "res_id": record.id,
         })
-        self._link_attachment_to_documents(attachment, encoded)
+        self._in_documents_ablegen(attachment, encoded)
         return attachment
 
-    def _create_pdf_attachment(self, record, version_num):
-        """Rendert und speichert PDF-Report als Anhang. Gibt False zurück bei Fehler."""
+    def _pdf_datei_speichern(self, record, version_num):
         if self.env.context.get("skip_pdf_attachment"):
             return False
         try:
@@ -286,22 +282,20 @@ class XMdDocument(models.Model):
             _logger.warning("PDF render failed for record %s v%s: %s", record.id, version_num, e)
             return False
 
-    def _get_or_create_mdwriter_folder(self):
-        """Gibt den MDWriter-Ordner in Documents zurück, legt ihn ggf. an."""
+    def _documents_ordner_holen(self):
         try:
             Doc = self.env["documents.document"].sudo()
             folder = Doc.search([("name", "=", "Markdown Dokumente"), ("type", "=", "folder")], limit=1)
             return folder or Doc.create({"name": "Markdown Dokumente", "type": "folder"})
         except Exception as e:
-            _logger.warning("Markdown Dokumente: Ordner konnte nicht angelegt werden: %s", e)
+            _logger.warning("MDWriter: Ordner konnte nicht angelegt werden: %s", e)
             return None
 
-    def _link_attachment_to_documents(self, attachment, datas):
-        """Legt das Attachment als documents.document im MDWriter-Ordner ab."""
+    def _in_documents_ablegen(self, attachment, datas):
         if "documents.document" not in self.env:
             return
         try:
-            folder = self._get_or_create_mdwriter_folder()
+            folder = self._documents_ordner_holen()
             if not folder:
                 return
             self.env["documents.document"].sudo().create({
@@ -314,15 +308,14 @@ class XMdDocument(models.Model):
         except Exception as e:
             _logger.warning("MDWriter: documents.document konnte nicht erstellt werden: %s", e)
 
-    def _create_version(self):
-        """Legt eine neue append-only Version an. Wird bei create/write ausgelöst."""
+    def _version_anlegen(self):
         # sudo() nötig: normale User dürfen keine Versions-Records direkt anlegen (ACL)
         Version = self.env["x.md.document.version"].sudo()
         for record in self:
             content = record.content_md or ""
             next_version = record.current_version + 1
-            md_att = self._create_md_attachment(record, content, next_version)
-            pdf_att = self._create_pdf_attachment(record, next_version)
+            md_att = self._md_datei_speichern(record, content, next_version)
+            pdf_att = self._pdf_datei_speichern(record, next_version)
             Version.create({
                 "document_id": record.id,
                 "version": next_version,
@@ -334,19 +327,17 @@ class XMdDocument(models.Model):
                 "pdf_attachment_id": pdf_att.id if pdf_att else False,
             })
 
-    def action_set_draft(self):
+    def aktion_als_entwurf(self):
         self.write({"state": "draft"})
 
-    def action_publish(self):
+    def aktion_veroeffentlichen(self):
         self.write({"state": "published"})
 
-    def action_archive_doc(self):
+    def aktion_archivieren(self):
         self.write({"state": "archived"})
 
-    def action_export_pdf(self):
-        """Lädt das PDF der aktuellen Version herunter."""
+    def aktion_pdf_exportieren(self):
         self.ensure_one()
-        # version_ids ist desc sortiert → [:1] ist immer die aktuellste Version
         latest = self.version_ids[:1]
         if latest and latest.pdf_attachment_id:
             return {
@@ -356,8 +347,7 @@ class XMdDocument(models.Model):
             }
         return self.env.ref("markdown_editor.md_document_pdf").report_action(self)
 
-    def action_download_md(self):
-        """Lädt die .md-Datei der aktuellen Version herunter."""
+    def aktion_md_herunterladen(self):
         self.ensure_one()
         latest = self.version_ids[:1]
         if not latest or not latest.md_attachment_id:
@@ -368,17 +358,7 @@ class XMdDocument(models.Model):
             "target": "new",
         }
 
-    def _get_report_html(self):
-        """Gibt gerendertes HTML für den PDF-Report zurück.
-
-        Direkter Aufruf aus dem QWeb-Template — umgeht den fields.Html ORM-Pfad,
-        damit Markup() sicher als t-out-sicherer String ankommt.
-        """
-        self.ensure_one()
-        return self._markdown_to_html(self.content_md) if self.content_md else Markup("")
-
-    def action_open_diff(self):
-        """Öffnet den Versionsdiff-Wizard."""
+    def aktion_diff_anzeigen(self):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
@@ -392,17 +372,17 @@ class XMdDocument(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records._create_version()
+        records._version_anlegen()
         return records
 
     def write(self, vals):
         res = super().write(vals)
         if "content_md" in vals:
-            self._create_version()
+            self._version_anlegen()
         return res
 
     @api.model
-    def _create_demo_data(self):
+    def _demo_dokumente_anlegen(self):
         """Legt Beispieldokumente für Demo-Instanzen an. Wird nur aus demo/demo_documents.xml aufgerufen."""
         try:
             self = self.with_context(skip_pdf_attachment=True)
@@ -437,8 +417,7 @@ class XMdDocumentVersion(models.Model):
     md_attachment_id = fields.Many2one(comodel_name="ir.attachment", string="Markdown‑Anhang")
     pdf_attachment_id = fields.Many2one(comodel_name="ir.attachment", string="PDF‑Anhang")
 
-    def action_restore(self):
-        """Stellt diesen Versionsstand wieder her — erzeugt neue Version, löscht keine."""
+    def aktion_wiederherstellen(self):
         self.ensure_one()
         self.document_id.write({"content_md": self.content_md})
         return {

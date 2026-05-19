@@ -8,15 +8,15 @@
             <form string="Markdown‑Dokument">
                 <sheet>
                     <header>
-                        <button name="action_publish" type="object" string="Veröffentlichen"
+                        <button name="aktion_veroeffentlichen" type="object" string="Veröffentlichen"
                             invisible="state == 'published'" class="btn-primary"/>
-                        <button name="action_set_draft" type="object" string="Zurück zu Entwurf"
+                        <button name="aktion_als_entwurf" type="object" string="Zurück zu Entwurf"
                             invisible="state == 'draft'"/>
-                        <button name="action_archive_doc" type="object" string="Archivieren"
+                        <button name="aktion_archivieren" type="object" string="Archivieren"
                             invisible="state == 'archived'"/>
-                        <button name="action_export_pdf" type="object" string="Als PDF exportieren"
+                        <button name="aktion_pdf_exportieren" type="object" string="Als PDF exportieren"
                             invisible="not current_version"/>
-                        <button name="action_download_md" type="object" string="Markdown herunterladen"
+                        <button name="aktion_md_herunterladen" type="object" string="Markdown herunterladen"
                             invisible="not current_version"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,published,archived"/>
                     </header>
@@ -39,7 +39,7 @@
                         </page>
                         <page string="Versionen" name="versions">
                             <div class="mb-2">
-                                <button name="action_open_diff" type="object" string="Versionen vergleichen" class="btn btn-secondary btn-sm"/>
+                                <button name="aktion_diff_anzeigen" type="object" string="Versionen vergleichen" class="btn btn-secondary btn-sm"/>
                             </div>
                             <field name="version_ids" readonly="1">
                                 <list string="Versionen">
@@ -104,7 +104,7 @@
         <field name="arch" type="xml">
             <form string="Version" create="false" edit="false" delete="false">
                 <header>
-                    <button name="action_restore" type="object" string="Wiederherstellen" class="btn-primary" confirm="Möchtest du das Dokument auf diese Version zurücksetzen? Eine neue Version wird automatisch angelegt."/>
+                    <button name="aktion_wiederherstellen" type="object" string="Wiederherstellen" class="btn-primary" confirm="Möchtest du das Dokument auf diese Version zurücksetzen? Eine neue Version wird automatisch angelegt."/>
                 </header>
                 <sheet>
                     <div class="oe_title">
