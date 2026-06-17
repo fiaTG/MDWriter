@@ -93,3 +93,9 @@ htmlcov/
 # Claude Code (enthält Projekt-IDs und interne Notizen)
 claude.md
 .claude/
+
+# Office-Sperrdateien (entstehen beim Öffnen in Word/PowerPoint)
+~$*
+
+# Persönliches Foto (nur lokal, bereits in die Präsentation eingebettet)
+docs/GieseTimo.jpg
